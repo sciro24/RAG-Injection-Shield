@@ -4,8 +4,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 
-# Dati e checkpoint non sono versionati; il corpus della demo si', perche' e'
-# piccolo e serve a riprodurre gli esperimenti end-to-end.
+#Dati
 data/*
 !data/.gitkeep
 !data/raw/
