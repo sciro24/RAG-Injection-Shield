@@ -352,6 +352,6 @@ app/demo.py      Streamlit demo, single file (theme in .streamlit/config.toml)
 tests/           pytest, no real model involved
 configs/         config.yaml: every path and hyperparameter
 reports/         figures/, results/, logs/
-models/          detector/ (S2), lodo_<domain>/ (transfer matrix), tfidf_baseline.pkl
+models/          detector/ (S2) and tfidf_baseline.pkl; lodo_<domain>/ appear after eval-generalization
 data/            raw/ (downloaded sources, demo corpus), processed/ (parquet splits)
 ```
