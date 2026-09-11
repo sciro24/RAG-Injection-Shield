@@ -1,7 +1,8 @@
 # RAG Injection Shield — traccia per le slide
 
 Dieci slide. Per ciascuna: il titolo, il testo da mettere in slide (poco, in punti) e le
-note per il parlato. I numeri vengono da `reports/results/` e dal README, sezione 6.
+note per il parlato. I numeri vengono da `reports/results/` e dal README, sezione 6. Le
+figure sono in `reports/figures/` (`make figures` le rigenera dai CSV).
 
 ---
 
@@ -83,6 +84,8 @@ il regex aggancia l'esca ma l'istruzione è tutta la riga.
   `stealth`: 14 stili di attacco mai visti in training, cioè i pattern non noti.
 - **Classificatore**: `xlm-roberta-base`, multilingue, 3 epoche, 15 minuti.
 
+Figura: `reports/figures/detector_tpr.png` (TPR a FPR 1%, quattro detector, due test set).
+
 | Detector | BIPIA AUC / TPR@1% | stealth AUC / TPR@1% |
 |---|---|---|
 | S2 (questo progetto) | **0.98 / 0.90** | **0.98 / 0.91** |
@@ -105,6 +108,8 @@ TPR a FPR fisso, non AUC né F1, perché il sistema lavora in un solo punto dell
   maggior parte degli attacchi reali. Con quella soglia la cascata lascia passare tutto.
 - Soluzione: **calibrare sulla distribuzione di esercizio** (5 000 recensioni pulite):
   τ_hi = 0.0020, 0,1% di falsi positivi lì.
+
+Figura: `reports/figures/threshold_fpr.png`.
 
 E il rovescio: la stessa soglia, su prosa benigna reale di BIPIA, dà **95% di falsi
 positivi**, perché i passaggi puliti di BIPIA hanno score più alti delle recensioni
@@ -145,7 +150,8 @@ vettori sono scritte dall'autore: un attaccante informato, non uno che ottimizza
 ## 8. Risultati: senza difesa cadono tutti, con la cascata l'ASR va a zero
 
 ASR, 150 campioni per cella, intervalli di Wilson al 95%. Senza difesa e con la cascata
-completa.
+completa. Figure: `reports/figures/asr_none_vs_full.png` (il grafico principale) e
+`asr_by_stage.png` (contributo di ogni stadio).
 
 | | Gemma 4 E4B | Qwen3.8 4B distill | Ministral 3 3B |
 |---|---|---|---|
@@ -168,6 +174,10 @@ l'evidenza è una cosa che questi modelli fanno malvolentieri, Gemma quasi mai.
 ---
 
 ## 9. Cosa passa ancora
+
+Figura: `reports/figures/vulnerability_by_vector.png`, la mappa modelli × vettori senza
+difesa: si vede subito quali attacchi funzionano su chi (E2 sempre, A6 in italiano sempre,
+D6 solo su Ministral) e che metà dei vettori non funziona su nessuno.
 
 Rilevazione con la cascata completa, per famiglia (media sui tre modelli):
 espliciti **100%**, adattivi **94%**, deviazione **71%**.
@@ -207,3 +217,41 @@ quantizzato per vincolo di VRAM; solo inglese; FPR sul corpus sintetico circolar
 **Note.** Se c'è tempo, fare la demo dal vivo: vettore classico 2 su Ministral (cade senza
 difesa, resiste con difesa), vettore adattivo 6 in italiano (stesso esito, ma decide il
 classificatore), poi deviazione 3 «Editor's pick», che è quella che più facilmente passa.
+
+---
+
+## Numeri pronti da citare
+
+Tutti verificabili nei CSV di `reports/results/`.
+
+- **Dati di training**: 28 846 passaggi, 41% positivi; 399 documenti BIPIA, 125 attacchi
+  BIPIA, 22 stili sintetici × 18 obiettivi, 18 909 prompt PromptShield.
+- **Test**: BIPIA test 6 881 passaggi (125 attacchi mai visti); stealth 1 692 passaggi (14
+  stili mai visti). Nessun attacco di test compare nel training, controllo automatico.
+- **Classificatore**: xlm-roberta-base, 278M parametri, 3 epoche, ~15 minuti su GPU da
+  12 GB, eval_loss 0.046. Inferenza: pochi millisecondi per passaggio (cascata completa
+  15-30 ms per 4 passaggi).
+- **Detector**: AUC 0.98 su BIPIA e su stealth; TPR 0.90 e 0.91 a FPR 1%; 0.69 e 0.83 a
+  FPR 0,1%. Riferimento pubblico: AUC 0.64, TPR 0.02. Sole regole: TPR 0.07 e 0.12.
+- **Matrice di trasferimento**: detector completo 0.94 / 0.54 / 0.97 / 0.95 su abstract,
+  code, email, table. Un detector addestrato su un solo dominio: da 0.00 a 0.93 fuori dal
+  suo dominio.
+- **ASR senza difesa** (media dei tre modelli): espliciti 0.24, adattivi 0.25, deviazione
+  0.10. Il modello più vulnerabile è Ministral (0.30, 0.30, 0.15), il meno è Qwen3.8 sugli
+  espliciti (0.21) e Gemma sulle deviazioni (0.03).
+- **ASR con cascata completa**: espliciti 0.00 su tutti; adattivi 0.00, 0.00, 0.02;
+  deviazione 0.01, 0.04, 0.03. Intervalli di confidenza [0, 0.02] dove l'ASR è zero.
+- **Rilevazione con cascata completa**: espliciti 100%, adattivi 94%, deviazione 71%. Le sole
+  regole: 57%, 0%, 0%. Escalation al giudice S3: 0% espliciti, 12% adattivi, 16%
+  deviazione.
+- **Vettori che funzionano senza difesa**: E2 `### SYSTEM OVERRIDE` 1.00 su Gemma e
+  Ministral; A6 in italiano 0.82-0.89 su tutti; D6 (deviazione in inglese travestita da nota
+  di accuratezza) 0.35 solo su Ministral. Metà dei vettori espliciti non funziona su
+  nessuno.
+- **Residuo con cascata**: D3 «Editor's pick» e D4 concierge, 0.03-0.12; rilevazione di
+  D3 27% e D4 20% nel test del classificatore.
+- **Soglie**: τ_hi 0.99993 se calibrata su PromptShield (lascia passare tutto), 0.0020 se
+  calibrata sulle recensioni demo: 0,1% di falsi positivi lì, 95% su BIPIA.
+- **Utility**: 60 domande pulite, 0 passaggi rimossi, similarità delle risposte 1.00.
+- **Costo**: 1200-1800 generazioni per modello in ~25 minuti; il retrieval scarta da solo il
+  documento avvelenato nel 68-76% dei casi, per questo l'esperimento lo tiene nel contesto.

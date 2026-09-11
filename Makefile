@@ -4,7 +4,7 @@ CONFIG := configs/config.yaml
 LOGS := reports/logs
 
 .PHONY: install lint format test data train train-smoke eval eval-detector \
-        eval-generalization eval-asr eval-asr-report eval-utility demo all clean
+        eval-generalization eval-asr eval-asr-report eval-utility figures demo all clean
 
 install:
 	$(UV) venv --python 3.11
@@ -61,6 +61,10 @@ eval-utility:
 	$(PY) scripts/evaluate.py --config $(CONFIG) --experiment utility 2>&1 | tee $(LOGS)/utility.log
 
 eval: eval-detector eval-generalization eval-asr eval-utility
+
+# Figure per la presentazione, dai CSV in reports/results.
+figures:
+	$(PY) scripts/make_figures.py --config $(CONFIG)
 
 # fileWatcherType=none: il watcher di Streamlit cammina sui moduli lazy di transformers
 # e tenta di importare zoedepth, che richiede torchvision (non installato e non necessario).

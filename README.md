@@ -1,3 +1,5 @@
+**English** · **[Italiano](README.it.md)**
+
 # RAG Injection Shield
 
 A cascaded defense against **indirect prompt injection** in retrieval-augmented generation
@@ -183,6 +185,7 @@ make lint test        # ruff + pytest
 make data             # downloads the sources, builds the splits and the demo corpus
 make train            # trains the classifier, ~15 minutes
 make eval             # all four experiments
+make figures          # presentation figures from the results
 make demo             # Streamlit demo
 ```
 
@@ -347,11 +350,12 @@ data, structured queries, adversarial training of the target model, cross-encode
 
 ```
 src/shield/      library: one module per responsibility, no I/O in the core modules
-scripts/         prepare_data, train, evaluate, build_demo_corpus
+scripts/         prepare_data, train, evaluate, build_demo_corpus, make_figures
 app/demo.py      Streamlit demo, single file (theme in .streamlit/config.toml)
 tests/           pytest, no real model involved
 configs/         config.yaml: every path and hyperparameter
 reports/         figures/, results/, logs/
 models/          detector/ (S2) and tfidf_baseline.pkl; lodo_<domain>/ appear after eval-generalization
 data/            raw/ (downloaded sources, demo corpus), processed/ (parquet splits)
+README.it.md     this document in Italian
 ```
