@@ -12,11 +12,14 @@ import polars as pl
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from shield.attacks import HELDOUT_STYLES, TRAIN_STYLES, synth_attack  # noqa: E402
 from shield.config import Config, load_config  # noqa: E402
 from shield.data import (  # noqa: E402
+    CANARY_FAMILIES,
     assert_disjoint_attacks,
     build_chunk_records,
     build_detector_splits,
+    build_synthetic_records,
     load_bipia_attacks,
     load_bipia_documents,
     load_promptshield,
@@ -48,36 +51,91 @@ def describe(name: str, frame: pl.DataFrame) -> None:
             )
 
 
+COLUMNS = ["text", "query", "label", "domain"]
+
+
 def build(config: Config) -> dict[str, pl.DataFrame]:
+    """Split del detector.
+
+    train        BIPIA train (iniezione indiretta su documenti reali) + attacchi sintetici
+                 negli stili di addestramento + PromptShield (iniezione diretta)
+    validation   stessa composizione, su documenti BIPIA tenuti fuori dal training
+    calibration  soli benigni di PromptShield, per il confronto fra soglie
+    test         BIPIA test: attacchi e documenti disgiunti dal training
+    stealth      documenti BIPIA test avvelenati con gli stili tenuti fuori: pattern non noti
+    bipia_train  tutto BIPIA train, per il leave-one-domain-out"""
     from transformers import AutoTokenizer
 
     rng = random.Random(config.seed)
-    raw = config.paths.raw
+    raw, cfg = config.paths.raw, config.data
     logger.info("seed=%d", config.seed)
 
-    promptshield = load_promptshield(raw, config.data)
-    splits = build_detector_splits(promptshield, config.data.calibration_benign_min, rng)
-
+    promptshield = build_detector_splits(
+        load_promptshield(raw, cfg), cfg.calibration_benign_min, rng
+    )
     tokenizer = AutoTokenizer.from_pretrained(config.classifier.model_name)
-    for split, name in (("test", "test"), ("train", "bipia_train")):
-        docs = load_bipia_documents(raw, config.data, split)
-        attacks = load_bipia_attacks(raw, config.data, split)
-        logger.info(
-            "BIPIA %s: %d documenti, %d istruzioni d'attacco", split, len(docs), len(attacks)
-        )
-        splits[name] = build_chunk_records(docs, attacks, tokenizer, config.data, rng)
 
-    test_attacks = [a.text for a in load_bipia_attacks(raw, config.data, "test")]
-    train_texts = promptshield["train"]["text"].to_list() + [
-        a.text for a in load_bipia_attacks(raw, config.data, "train")
-    ]
+    train_docs = load_bipia_documents(raw, cfg, "train")
+    train_attacks = load_bipia_attacks(raw, cfg, "train")
+    test_docs = load_bipia_documents(raw, cfg, "test")
+    test_attacks = load_bipia_attacks(raw, cfg, "test")
+    rng.shuffle(train_docs)
+    cut = int(len(train_docs) * cfg.train_fraction)
+    fit_docs, val_docs = train_docs[:cut], train_docs[cut:]
     logger.info(
-        "controllo di non sovrapposizione: %d attacchi di test contro %d testi di training",
+        "BIPIA: %d documenti di training (%d fit, %d validation), %d attacchi; "
+        "%d documenti di test, %d attacchi",
+        len(train_docs),
+        len(fit_docs),
+        len(val_docs),
+        len(train_attacks),
+        len(test_docs),
         len(test_attacks),
+    )
+
+    def chunks(docs: list, attacks: list) -> pl.DataFrame:
+        return build_chunk_records(docs, attacks, tokenizer, cfg, rng)
+
+    def synthetic(docs: list, styles: tuple[str, ...], variants: int) -> pl.DataFrame:
+        return build_synthetic_records(docs, styles, tokenizer, cfg, rng, variants)
+
+    bipia_fit, bipia_val = chunks(fit_docs, train_attacks), chunks(val_docs, train_attacks)
+    synth_fit = synthetic(fit_docs, TRAIN_STYLES, cfg.synthetic_variants_per_doc)
+    synth_val = synthetic(val_docs, TRAIN_STYLES, 2)
+
+    seed = rng.randint(0, 2**31 - 1)
+    splits = {
+        "train": pl.concat(
+            [
+                bipia_fit.select(COLUMNS),
+                synth_fit.select(COLUMNS),
+                promptshield["train"].select(COLUMNS),
+            ]
+        ).sample(fraction=1.0, shuffle=True, seed=seed),
+        "validation": pl.concat(
+            [
+                bipia_val.select(COLUMNS),
+                synth_val.select(COLUMNS),
+                promptshield["validation"].select(COLUMNS),
+            ]
+        ),
+        "calibration": promptshield["calibration"],
+        "test": chunks(test_docs, test_attacks),
+        "stealth": synthetic(test_docs, HELDOUT_STYLES, 2),
+        "bipia_train": pl.concat([bipia_fit, bipia_val]),
+    }
+
+    heldout = [a.text for a in test_attacks]
+    heldout += [synth_attack(HELDOUT_STYLES, rng) for _ in range(300)]
+    heldout += [t.format(canary="CNRYTEST0000") for f in CANARY_FAMILIES.values() for t in f]
+    train_texts = splits["train"]["text"].to_list()
+    logger.info(
+        "controllo di non sovrapposizione: %d attacchi tenuti fuori contro %d testi di training",
+        len(heldout),
         len(train_texts),
     )
-    assert_disjoint_attacks(train_texts, test_attacks)
-    logger.info("nessuna istruzione d'attacco del test compare nel training")
+    assert_disjoint_attacks(train_texts, heldout)
+    logger.info("nessun attacco tenuto fuori compare nel training")
     return splits
 
 

@@ -95,31 +95,28 @@ def load_detectors(config: Config, with_external: bool) -> dict[str, Classifier]
 
 
 def experiment_detector(config: Config, args: argparse.Namespace) -> None:
-    test, calibration = read(config, "test"), read(config, "calibration")
+    """Confronto dei detector su due test set: BIPIA (attacchi reali, disgiunti dal
+    training) e `stealth` (stili di attacco mai visti in training: i pattern non noti)."""
+    calibration = read(config, "calibration")
     detectors = load_detectors(config, not args.no_external)
     logger.info("detector confrontati: %s", ", ".join(detectors))
-    # Il modello e' addestrato su PromptShield, dove la query e' vuota, e testato su
-    # BIPIA, dove c'e'. Le due varianti separano il fallimento di trasferimento dallo
-    # scarto di formato introdotto dal separatore.
-    tables = [
-        compare_detectors(detectors, test, calibration, config, use_query=flag).with_columns(
-            pl.lit(flag).alias("query_context")
-        )
-        for flag in (True, False)
-    ]
-    table = pl.concat(tables)
-    write(table, config.paths.results / "detector_comparison.csv")
-    for name in ("auc", "tpr_at_fpr_0.001", "tpr_at_fpr_0.01"):
+    tables = []
+    for name in ("test", "stealth"):
+        frame = read(config, name)
+        table = compare_detectors(detectors, frame, calibration, config, use_query=True)
+        tables.append(table.with_columns(pl.lit(name).alias("test_set")))
         for row in table.iter_rows(named=True):
             logger.info(
-                "  query_context=%-5s %-12s %-18s %.4f",
-                row["query_context"],
-                row["detector"],
+                "  %-8s %-12s auc=%.3f tpr@1%%=%.3f tpr@0.1%%=%.3f",
                 name,
-                row[name],
+                row["detector"],
+                row["auc"],
+                row["tpr_at_fpr_0.01"],
+                row["tpr_at_fpr_0.001"],
             )
+    write(pl.concat(tables), config.paths.results / "detector_comparison.csv")
     if "shield_s2" in detectors:
-        dump_hard_cases(config, detectors["shield_s2"], test, calibration)
+        dump_hard_cases(config, detectors["shield_s2"], read(config, "test"), calibration)
 
 
 def dump_hard_cases(
@@ -139,14 +136,14 @@ def dump_hard_cases(
 
 
 def experiment_generalization(config: Config, args: argparse.Namespace) -> None:
-    """Due trasferimenti: PromptShield -> BIPIA, e leave-one-domain-out dentro BIPIA."""
+    """Leave-one-domain-out dentro BIPIA, con il detector completo (`all`) come riferimento."""
     from train import fit_detector  # noqa: PLC0415
 
     test = read(config, "test")
     rows: list[pl.DataFrame] = []
     detectors = load_detectors(config, False)
     if "shield_s2" in detectors:
-        rows.append(transfer_matrix(detectors["shield_s2"], test, "promptshield", config))
+        rows.append(transfer_matrix(detectors["shield_s2"], test, "all", config))
 
     bipia = read(config, "bipia_train")
     domains = sorted(bipia["domain"].unique().to_list())
@@ -250,9 +247,11 @@ def build_pipeline(config: Config, victim: str | None = None) -> RagPipeline:
     from shield.llm import LocalLLM, lmstudio_load
 
     llm_config = replace(config.llm, lmstudio_model=victim) if victim else config.llm
-    if victim and config.llm.backend != "transformers":
-        seconds = lmstudio_load(config.llm.lmstudio_base_url, victim)
-        logger.info("modello vittima %s in memoria (%.1f s)", victim, seconds)
+    if config.llm.backend != "transformers":
+        # Caricamento esplicito ed esclusivo: lasciare che il server carichi il modello
+        # alla prima richiesta non scarica gli altri, e due modelli non stanno in VRAM.
+        seconds = lmstudio_load(config.llm.lmstudio_base_url, llm_config.lmstudio_model)
+        logger.info("modello %s in memoria (%.1f s)", llm_config.lmstudio_model, seconds)
     llm = LocalLLM(llm_config)
     if victim and llm.backend == "lmstudio" and llm._served_model.lower() != victim.lower():
         raise RuntimeError(

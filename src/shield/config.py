@@ -29,6 +29,7 @@ class DataConfig:
     xsum_repo: str
     max_docs_per_domain: int
     variants_per_doc: int
+    synthetic_variants_per_doc: int
     chunk_tokens: int
     chunk_overlap: int
     min_overlap_chars: int

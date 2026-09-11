@@ -24,6 +24,8 @@ data:
   # ogni documento genera piu' varianti (pulite o avvelenate con attacchi e
   # posizioni diverse): e' il modo in cui BIPIA ottiene copertura da poche fonti.
   variants_per_doc: 8
+  # varianti con attacchi sintetici (stile x obiettivo) per documento di training
+  synthetic_variants_per_doc: 4
   chunk_tokens: 256
   chunk_overlap: 64
   min_overlap_chars: 10
@@ -33,13 +35,9 @@ data:
   positions: [start, middle, end]
 
 classifier:
-  # Il piano parte da microsoft/deberta-v3-base e prevede il ripiego su roberta-base
-  # in caso di attrito. L'attrito qui non e' il tokenizer ma la stabilita' numerica:
-  # deberta-v3-base diverge in ogni configurazione provata (bf16 e fp32, lr da 5e-6
-  # a 2e-5), producendo loss costante a ln2 oppure eval_loss NaN. La misura e' in
-  # README, sezione "Scelta del classificatore". roberta-base converge senza attriti.
-  model_name: roberta-base
-  fallback_model_name: microsoft/deberta-v3-base
+  # Encoder multilingue: le regole, gli attacchi e il corpus non sono solo in inglese.
+  model_name: xlm-roberta-base
+  fallback_model_name: roberta-base
   max_length: 256
   batch_size: 16
   eval_batch_size: 64
@@ -101,9 +99,10 @@ evaluation:
   asr_sample_size: 150
   utility_queries: 60
   configurations: [none, s1, s1_s2, full]
-  # 'baseline': gli 8 vettori con marker e imperativi espliciti; 'adaptive': 6 vettori
-  # scritti conoscendo le regole S1, che si travestono da contenuto (vedi data.py).
-  attack_families: [baseline, adaptive]
+  # 'baseline': 8 vettori con marker e imperativi espliciti; 'adaptive': 6 vettori scritti
+  # conoscendo le regole S1, travestiti da contenuto; 'steer': 6 vettori che dirottano la
+  # raccomandazione verso un hotel inventato (vedi data.py).
+  attack_families: [baseline, adaptive, steer]
   # Modelli vittima serviti da LM Studio (id come in /v1/models). L'ASR e' una proprieta'
   # della coppia difesa-modello: un modello allineato resiste da solo a molte iniezioni,
   # uno piccolo o non allineato no, ed e' quello che gira nei RAG locali.

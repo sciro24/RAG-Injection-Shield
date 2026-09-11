@@ -64,6 +64,10 @@ RULES: tuple[Rule, ...] = (
             r"\b(?:previous|prior|earlier|above|preceding|initial|original|all|any)\b"
             r"[^.\n]{0,30}?\b(?:instruction|prompt|direction|command|rule|guideline|"
             r"context|message|request)s?\b"
+            # italiano
+            r"|\b(?:ignora|dimentica|scavalca|tralascia|non\s+seguire)\b[^.\n]{0,40}?"
+            r"\b(?:istruzion[ei]|prompt|regol[ae]|indicazion[ei]|comand[oi]|richiest[ae])\b"
+            r"(?:[^.\n]{0,30}?\b(?:precedent[ei]|iniziali|original[ei]|di\s+prima|sopra)\b)?"
         ),
         weight=0.95,
     ),
@@ -94,7 +98,13 @@ RULES: tuple[Rule, ...] = (
             r"|from\s+now\s+on,?\s+you\s+(?:must|will|shall|should|are|have)"
             r"|you\s+(?:must|should|shall|have\s+to)\s+(?:now\s+|always\s+|instead\s+)?"
             r"(?:respond|reply|answer|output|say|write|include|append|print|begin|start)\b"
-            r"|(?:important|attention|urgent)\s*[:!]\s*(?:ai|assistant|model)\b)"
+            r"|(?:important|attention|urgent)\s*[:!]\s*(?:ai|assistant|model)\b"
+            # italiano
+            r"|se\s+sei\s+un[a'’]?\s*(?:ia|intelligenza\s+artificiale|assistente|"
+            r"modello\s+linguistico|chatbot|bot)\b"
+            r"|il\s+tuo\s+(?:nuovo|vero|unico|solo)\s+(?:compito|obiettivo|ruolo|scopo)\b"
+            r"|(?:nota|istruzion[ei]|avviso|attenzione)\s+(?:per|al|all[’']?)\s*"
+            r"(?:l[’']?\s*)?(?:assistente|ia|intelligenza\s+artificiale|modello)\b)"
         ),
         weight=0.85,
     ),
@@ -106,6 +116,10 @@ RULES: tuple[Rule, ...] = (
             r"\b(?:system\s+(?:prompt|message|instruction)|initial\s+(?:prompt|instruction)|"
             r"your\s+(?:instruction|prompt|configuration|guideline|directive|rule)s?|"
             r"hidden\s+(?:prompt|instruction)|training\s+data|api[\s_-]?key)\b"
+            # italiano
+            r"|\b(?:mostra|rivela|ripeti|stampa|scrivi|riporta)\b[^.\n]{0,40}?"
+            r"\b(?:prompt\s+di\s+sistema|le\s+tue\s+istruzioni|istruzioni\s+iniziali|"
+            r"la\s+tua\s+configurazione)\b"
         ),
         weight=0.9,
     ),
