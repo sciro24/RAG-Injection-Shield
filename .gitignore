@@ -1,0 +1,26 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Dati e checkpoint non sono versionati; il corpus della demo si', perche' e'
+# piccolo e serve a riprodurre gli esperimenti end-to-end.
+data/*
+!data/.gitkeep
+!data/raw/
+data/raw/*
+!data/raw/.gitkeep
+!data/raw/demo_corpus.jsonl
+!data/raw/demo_calibration.jsonl
+!data/processed/
+data/processed/*
+!data/processed/.gitkeep
+
+models/*
+!models/.gitkeep
+
+reports/logs/*
+!reports/logs/.gitkeep
+
+*.parquet

@@ -1,0 +1,121 @@
+# Configurazione unica del progetto. Nessun percorso e nessun iperparametro
+# vive nel codice: tutto passa da qui.
+
+seed: 42
+
+paths:
+  raw: data/raw
+  processed: data/processed
+  models: models
+  figures: reports/figures
+  results: reports/results
+  demo_corpus: data/raw/demo_corpus.jsonl
+  demo_calibration: data/raw/demo_calibration.jsonl
+
+data:
+  promptshield_repo: hendzh/PromptShield
+  bipia_repo: microsoft/BIPIA
+  bipia_ref: main
+  # 'qa' resta fuori: BIPIA lo ricostruisce da NewsQA, che richiede una
+  # registrazione manuale e non e' scaricabile in modo riproducibile.
+  bipia_domains: [email, code, table, abstract]
+  xsum_repo: EdinburghNLP/xsum
+  max_docs_per_domain: 150
+  # ogni documento genera piu' varianti (pulite o avvelenate con attacchi e
+  # posizioni diverse): e' il modo in cui BIPIA ottiene copertura da poche fonti.
+  variants_per_doc: 8
+  chunk_tokens: 256
+  chunk_overlap: 64
+  min_overlap_chars: 10
+  positive_ratio: 0.5
+  calibration_benign_min: 5000
+  train_fraction: 0.85
+  positions: [start, middle, end]
+
+classifier:
+  # Il piano parte da microsoft/deberta-v3-base e prevede il ripiego su roberta-base
+  # in caso di attrito. L'attrito qui non e' il tokenizer ma la stabilita' numerica:
+  # deberta-v3-base diverge in ogni configurazione provata (bf16 e fp32, lr da 5e-6
+  # a 2e-5), producendo loss costante a ln2 oppure eval_loss NaN. La misura e' in
+  # README, sezione "Scelta del classificatore". roberta-base converge senza attriti.
+  model_name: roberta-base
+  fallback_model_name: microsoft/deberta-v3-base
+  max_length: 256
+  batch_size: 16
+  eval_batch_size: 64
+  learning_rate: 2.0e-5
+  epochs: 3
+  warmup_ratio: 0.1
+  eval_steps: 250
+  weight_decay: 0.01
+  bf16: true
+  optimizer: adamw_torch_fused
+  seed: 42
+  checkpoint_dir: models/detector
+  external_baseline: protectai/deberta-v3-base-prompt-injection-v2
+
+cascade:
+  rules_block_threshold: 0.9
+  tau_lo: 0.2
+  tau_hi: 0.8
+  high_score_action: sanitize        # 'sanitize' oppure 'block'
+  redaction_marker: "[RIMOSSO: ISTRUZIONE SOSPETTA]"
+  min_remaining_ratio: 0.2           # sotto questa quota il sanitize degrada a block
+  use_query_context: true
+
+llm:
+  # 'auto' preferisce LM Studio quando risponde. Sulla GPU da 12 GB e' l'unico
+  # backend praticabile per un 4B della famiglia Gemma: google/gemma-4-E4B-it in
+  # bf16 pesa 14.9 GiB e non entra in VRAM (vedi README, sezione LLM).
+  backend: auto                      # auto | transformers | lmstudio
+  model_name: google/gemma-4-E4B-it
+  lmstudio_base_url: http://localhost:1234/v1
+  # Endpoint alternativi provati in ordine quando il primo non risponde: 11434 e'
+  # Ollama, che espone anch'esso un'API OpenAI-compatibile.
+  extra_base_urls:
+    - http://localhost:11434/v1
+  # Id come lo espone LM Studio in /v1/models. Se non e' caricato, il wrapper ripiega
+  # sul primo modello Gemma servito, e in mancanza sul primo disponibile.
+  lmstudio_model: google/gemma-4-e4b
+  # Gemma 4 ragiona per impostazione predefinita e brucerebbe l'intero budget in
+  # ragionamento, restituendo contenuto vuoto. Con 'none' risponde in 3 token invece
+  # di 266 (0.1 s contro 3.7 s). Stringa vuota per lasciare la scelta al server.
+  reasoning_effort: none
+  max_new_tokens: 256
+  judge_max_new_tokens: 8
+  temperature: 0.0
+  dtype: bfloat16
+
+rag:
+  encoder_name: sentence-transformers/all-MiniLM-L6-v2
+  top_k: 4
+  chunk_chars: 900
+  chunk_overlap_chars: 150
+
+evaluation:
+  target_fprs: [0.001, 0.01]
+  bootstrap_n: 1000
+  # Campioni per famiglia di vettori e per configurazione. Il documento avvelenato sta
+  # sempre nel contesto, quindi ogni campione conta: 150 danno un intervallo di Wilson
+  # di circa +-0.07 su un ASR di 0.3, in ~15 minuti per modello.
+  asr_sample_size: 150
+  utility_queries: 60
+  configurations: [none, s1, s1_s2, full]
+  # 'baseline': gli 8 vettori con marker e imperativi espliciti; 'adaptive': 6 vettori
+  # scritti conoscendo le regole S1, che si travestono da contenuto (vedi data.py).
+  attack_families: [baseline, adaptive]
+  # Modelli vittima serviti da LM Studio (id come in /v1/models). L'ASR e' una proprieta'
+  # della coppia difesa-modello: un modello allineato resiste da solo a molte iniezioni,
+  # uno piccolo o non allineato no, ed e' quello che gira nei RAG locali.
+  victims:
+    - google/gemma-4-e4b          # 8B totali (4B effettivi), allineato: il piu' resistente
+    - qwen3.8-4b-distill          # 4B, distillato, ragionamento disattivato via reasoning_effort
+    - mistralai/ministral-3-3b    # 3B: il tipico modello di un RAG locale
+
+demo:
+  n_reviews: 300
+  n_poisoned: 12
+  # Recensioni pulite aggiuntive, usate solo per calibrare tau sulla distribuzione di
+  # esercizio: le soglie stimate su PromptShield non si trasferiscono al corpus RAG
+  # (vedi README, "Il trasferimento della soglia"). Servono >= 5000 per un FPR dello 0,1%.
+  n_calibration: 5000

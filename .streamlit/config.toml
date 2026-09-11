@@ -1,0 +1,14 @@
+# Tema della demo: un solo colore primario neutro (il rosso predefinito di Streamlit
+# confondeva il bottone con gli avvisi di attacco riuscito) e raggi morbidi.
+
+[theme]
+primaryColor = "#2f6fed"
+baseRadius = "0.6rem"
+
+[server]
+# Il watcher di Streamlit cammina sui moduli lazy di transformers e tenta di importare
+# zoedepth, che richiede torchvision: traceback innocui ma rumorosi, e avvio lento.
+fileWatcherType = "none"
+
+[browser]
+gatherUsageStats = false

@@ -1,0 +1,52 @@
+[project]
+name = "rag-injection-shield"
+version = "0.1.0"
+description = "Difesa a cascata contro la prompt injection indiretta in pipeline RAG"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "torch==2.9.1",
+    "transformers==5.16.1",
+    "sentence-transformers==6.0.1",
+    "datasets==5.0.1",
+    "accelerate==1.14.0",
+    "scikit-learn==1.7.2",
+    "polars==1.34.0",
+    "pyarrow==21.0.0",
+    "pyyaml==6.0.3",
+    "numpy==2.4.6",
+    "streamlit==1.63.0",
+    "matplotlib==3.10.7",
+    "sentencepiece==0.2.1",
+    "protobuf==6.33.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==8.4.2",
+    "ruff==0.14.4",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/shield"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "scripts", "tests", "app"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ANN"]
+ignore = ["ANN401"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ANN201", "ANN001"]
+"scripts/*" = ["ANN201"]
+"app/*" = ["ANN201"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
