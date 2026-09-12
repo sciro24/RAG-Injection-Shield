@@ -1,5 +1,24 @@
 **English** · **[Italiano](README.it.md)**
 
+<p align="center">
+  <img src="screenshots/banner.jpeg" alt="RAG Injection Shield" width="100%">
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white" alt="Python 3.11">
+  <img src="https://img.shields.io/badge/PyTorch-2.9-EE4C2C?logo=pytorch&logoColor=white" alt="PyTorch">
+  <img src="https://img.shields.io/badge/Transformers-5.16-FFD21E?logo=huggingface&logoColor=black" alt="Transformers">
+  <img src="https://img.shields.io/badge/XLM--RoBERTa-base-6C3FC5" alt="XLM-RoBERTa">
+  <img src="https://img.shields.io/badge/Sentence--Transformers-MiniLM-2F6FED" alt="Sentence-Transformers">
+  <img src="https://img.shields.io/badge/Streamlit-1.63-FF4B4B?logo=streamlit&logoColor=white" alt="Streamlit">
+  <img src="https://img.shields.io/badge/LM_Studio-local_LLMs-1E1E2E" alt="LM Studio">
+  <img src="https://img.shields.io/badge/Polars-1.34-CD792C?logo=polars&logoColor=white" alt="Polars">
+  <img src="https://img.shields.io/badge/scikit--learn-1.7-F7931E?logo=scikitlearn&logoColor=white" alt="scikit-learn">
+  <img src="https://img.shields.io/badge/pytest-96_passed-0A9EDC?logo=pytest&logoColor=white" alt="pytest">
+  <img src="https://img.shields.io/badge/ruff-checked-D7FF64?logo=ruff&logoColor=black" alt="ruff">
+  <img src="https://img.shields.io/badge/uv-managed-DE5FE9?logo=uv&logoColor=white" alt="uv">
+</p>
+
 # RAG Injection Shield
 
 A cascaded defense against **indirect prompt injection** in retrieval-augmented generation
@@ -316,6 +335,32 @@ were calibrated on (see 6.3).
 3. **What the defense did.** For every retrieved passage, the verdict, the stage that decided
    with its score and threshold, and the text with the removed parts struck through.
 
+<p align="center">
+  <img src="screenshots/demo_controls.png" alt="Demo controls" width="90%">
+</p>
+
+*Controls: the question, the model that answers, the hidden instruction and its position.*
+
+<p align="center">
+  <img src="screenshots/demo_answers.png" alt="Two answers side by side" width="90%">
+</p>
+
+*The same model, the same prompt, two contexts: without the defense the canary appears in the
+answer; with the cascade it does not.*
+
+<p align="center">
+  <img src="screenshots/demo_defense.png" alt="What the defense did" width="90%">
+</p>
+
+*What the defense did: the poisoned review is sanitized by the rules, the injected line is
+struck through, the other passages pass.*
+
+<p align="center">
+  <img src="screenshots/demo_passage.png" alt="An adaptive attack in Italian caught by the classifier" width="90%">
+</p>
+
+*An adaptive attack in Italian: no rule fires, the classifier scores it 1.000 and removes it.*
+
 At startup the demo indexes the 300 demo reviews with `all-MiniLM-L6-v2` and calibrates the
 thresholds on the demo corpus, exactly like the experiments. Worth trying: the explicit vector
 2 on Ministral (falls without the defense, resists with it), the adaptive vector 6 in Italian
@@ -357,5 +402,6 @@ configs/         config.yaml: every path and hyperparameter
 reports/         figures/, results/, logs/
 models/          detector/ (S2) and tfidf_baseline.pkl; lodo_<domain>/ appear after eval-generalization
 data/            raw/ (downloaded sources, demo corpus), processed/ (parquet splits)
+screenshots/     banner and demo screenshots used in this README
 README.it.md     this document in Italian
 ```

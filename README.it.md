@@ -1,5 +1,24 @@
 **[English](README.md)** · **Italiano**
 
+<p align="center">
+  <img src="screenshots/banner.jpeg" alt="RAG Injection Shield" width="100%">
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white" alt="Python 3.11">
+  <img src="https://img.shields.io/badge/PyTorch-2.9-EE4C2C?logo=pytorch&logoColor=white" alt="PyTorch">
+  <img src="https://img.shields.io/badge/Transformers-5.16-FFD21E?logo=huggingface&logoColor=black" alt="Transformers">
+  <img src="https://img.shields.io/badge/XLM--RoBERTa-base-6C3FC5" alt="XLM-RoBERTa">
+  <img src="https://img.shields.io/badge/Sentence--Transformers-MiniLM-2F6FED" alt="Sentence-Transformers">
+  <img src="https://img.shields.io/badge/Streamlit-1.63-FF4B4B?logo=streamlit&logoColor=white" alt="Streamlit">
+  <img src="https://img.shields.io/badge/LM_Studio-local_LLMs-1E1E2E" alt="LM Studio">
+  <img src="https://img.shields.io/badge/Polars-1.34-CD792C?logo=polars&logoColor=white" alt="Polars">
+  <img src="https://img.shields.io/badge/scikit--learn-1.7-F7931E?logo=scikitlearn&logoColor=white" alt="scikit-learn">
+  <img src="https://img.shields.io/badge/pytest-96_passed-0A9EDC?logo=pytest&logoColor=white" alt="pytest">
+  <img src="https://img.shields.io/badge/ruff-checked-D7FF64?logo=ruff&logoColor=black" alt="ruff">
+  <img src="https://img.shields.io/badge/uv-managed-DE5FE9?logo=uv&logoColor=white" alt="uv">
+</p>
+
 # RAG Injection Shield
 
 Una difesa a cascata contro la **prompt injection indiretta** nei sistemi di
@@ -326,6 +345,33 @@ calibrate (vedi 6.3).
 3. **Cosa ha fatto la difesa.** Per ogni passaggio recuperato, il verdetto, lo stadio che ha
    deciso con il suo score e la sua soglia, e il testo con le parti rimosse barrate.
 
+<p align="center">
+  <img src="screenshots/demo_controls.png" alt="Controlli della demo" width="90%">
+</p>
+
+*Controlli: la domanda, il modello che risponde, l'istruzione nascosta e la sua posizione.*
+
+<p align="center">
+  <img src="screenshots/demo_answers.png" alt="Due risposte affiancate" width="90%">
+</p>
+
+*Stesso modello, stesso prompt, due contesti: senza difesa la canary compare nella risposta;
+con la cascata no.*
+
+<p align="center">
+  <img src="screenshots/demo_defense.png" alt="Cosa ha fatto la difesa" width="90%">
+</p>
+
+*Cosa ha fatto la difesa: la recensione avvelenata è ripulita dalle regole, la riga iniettata
+è barrata, gli altri passaggi passano.*
+
+<p align="center">
+  <img src="screenshots/demo_passage.png" alt="Un attacco adattivo in italiano preso dal classificatore" width="90%">
+</p>
+
+*Un attacco adattivo in italiano: nessuna regola scatta, il classificatore gli dà score 1.000
+e lo rimuove.*
+
 All'avvio la demo indicizza le 300 recensioni con `all-MiniLM-L6-v2` e calibra le soglie sul
 corpus della demo, esattamente come gli esperimenti. Da provare: il vettore esplicito 2 su
 Ministral (cade senza difesa, resiste con), il vettore adattivo 6 in italiano (stesso esito,
@@ -369,5 +415,6 @@ configs/         config.yaml: ogni percorso e iperparametro
 reports/         figures/, results/, logs/
 models/          detector/ (S2) e tfidf_baseline.pkl; lodo_<dominio>/ compaiono dopo eval-generalization
 data/            raw/ (sorgenti scaricate, corpus della demo), processed/ (split parquet)
+screenshots/     banner e screenshot della demo usati in questo README
 README.md        questo documento in inglese
 ```
