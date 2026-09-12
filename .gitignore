@@ -23,3 +23,6 @@ reports/logs/*
 !reports/logs/.gitkeep
 
 *.parquet
+
+# Traccia della presentazione: resta locale
+slide.md
